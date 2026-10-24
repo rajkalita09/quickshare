@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}QuickShare — Share Anything. Anywhere. In Seconds.{% endblock %}
+{% block body %}
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">
+        <i data-lucide="share-2"></i>
+      </span>
+      <span class="brand-text">
+        <strong>QuickShare</strong>
+        <span class="brand-sub">TEMPORARY FILE SHARING</span>
+      </span>
+    </a>
+    <span class="badge">10-MINUTE LINKS</span>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow">Fast. Simple. Temporary.</p>
+    <h1>Your Files. One Scan Away.</h1>
+    <p class="lede">
+      Upload any file, generate a secure QR code, and share it instantly.
+      No account. No hassle. Your link expires in 10 minutes.
+    </p>
+  </section>
+
+  <section class="stage" aria-live="polite">
+    <article id="upload-card" class="card upload-card" data-state="idle">
+      <form id="upload-form" class="upload-form">
+        <input id="file-input" class="file-input" type="file" name="file" required>
+
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose a file to upload">
+          <div class="dropzone-icon">
+            <i data-lucide="cloud-upload"></i>
+          </div>
+          <h2>Drop your file here</h2>
+          <p>or click to browse your device</p>
+          <button type="button" id="choose-btn" class="btn btn-primary">
+            <i data-lucide="folder-open"></i>
+            Choose File
+          </button>
+          <p class="hint">
+            Images, videos, PDFs, documents, ZIP files, and other common formats.
+            Maximum size: <strong id="max-size-label">25 MB</strong>.
+          </p>
+        </div>
+
+        <div id="selected-file" class="selected-file hidden">
+          <div class="file-chip">
+            <span class="file-type-icon" id="selected-icon"><i data-lucide="file"></i></span>
+            <div>
+              <p class="file-name" id="selected-name"></p>
+              <p class="file-meta" id="selected-size"></p>
+            </div>
+            <button type="button" id="remove-file" class="icon-btn" aria-label="Remove selected file">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="progress-panel" class="progress-panel hidden">
+          <div class="progress-copy">
+            <span id="progress-status">Uploading…</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="progress-bar" class="progress-bar"></div>
+          </div>
+          <p class="hint" id="progress-filename"></p>
+        </div>
+
+        <p id="error-message" class="alert alert-error hidden" role="alert"></p>
+
+        <button type="submit" id="upload-btn" class="btn btn-accent" disabled>
+          <i data-lucide="qr-code"></i>
+          Upload &amp; Generate QR
+        </button>
+      </form>
+    </article>
+
+    <article id="result-card" class="card result-card hidden">
+      <div id="result-active">
+        <div class="result-grid">
+          <div class="qr-panel">
+            <img id="qr-image" alt="QR code for the sharing link">
+            <button type="button" id="download-qr" class="btn btn-ghost">
+              <i data-lucide="download"></i>
+              Download QR
+            </button>
+          </div>
+          <div class="result-details">
+            <p class="result-kicker">Ready to share</p>
+            <h2>Scan or copy this link</h2>
+            <div class="file-chip compact">
+              <span class="file-type-icon" id="result-icon"><i data-lucide="file"></i></span>
+              <div>
+                <p class="file-name" id="result-name"></p>
+                <p class="file-meta" id="result-size"></p>
+              </div>
+            </div>
+            <label class="field-label" for="share-url">Sharing URL</label>
+            <div class="url-row">
+              <input id="share-url" type="text" readonly>
+              <button type="button" id="copy-link" class="btn btn-primary">
+                <i data-lucide="copy"></i>
+                <span id="copy-label">Copy Link</span>
+              </button>
+            </div>
+            <div class="countdown">
+              <div class="countdown-ring">
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <circle class="ring-bg" cx="50" cy="50" r="42"></circle>
+                  <circle id="ring-fg" class="ring-fg" cx="50" cy="50" r="42"></circle>
+                </svg>
+                <div class="countdown-time">
+                  <i data-lucide="timer"></i>
+                  <strong id="countdown">10:00</strong>
+                </div>
+              </div>
+              <p class="hint">This link expires in 10 minutes. The server blocks access at expiry even if this timer is closed.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="result-expired" class="expired-inline hidden">
+        <div class="expired-icon"><i data-lucide="link-2-off"></i></div>
+        <h2>This Link Has Expired</h2>
+        <p>For privacy and security, this temporary file is no longer available.</p>
+      </div>
+
+      <button type="button" id="another-file" class="btn btn-ghost full">
+        <i data-lucide="plus"></i>
+        Upload another file
+      </button>
+    </article>
+  </section>
+
+  <section class="steps">
+    <article>
+      <span>01</span>
+      <h3>Upload</h3>
+      <p>Drop a file. QuickShare stores it privately with a random name.</p>
+    </article>
+    <article>
+      <span>02</span>
+      <h3>Share</h3>
+      <p>Copy the unique URL or let someone scan the QR code.</p>
+    </article>
+    <article>
+      <span>03</span>
+      <h3>Expire</h3>
+      <p>After 10 minutes the link is blocked and the file is deleted.</p>
+    </article>
+  </section>
+</main>
+
+<footer class="footer">
+  <p>QuickShare — Temporary file sharing, made simple.</p>
+  <p class="muted">Files are automatically removed after 10 minutes.</p>
+</footer>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.QUICKSHARE = {
+    maxUploadBytes: {{ max_upload_bytes }},
+    expirySeconds: {{ expiry_seconds }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

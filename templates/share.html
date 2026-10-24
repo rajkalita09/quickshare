@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Downloading {{ share.filename }} — QuickShare{% endblock %}
+{% block body %}
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">
+        <i data-lucide="share-2"></i>
+      </span>
+      <span class="brand-text">
+        <strong>QuickShare</strong>
+        <span class="brand-sub">TEMPORARY FILE SHARING</span>
+      </span>
+    </a>
+    <span class="badge">10-MINUTE LINKS</span>
+  </div>
+</header>
+
+<main class="receiver">
+  <article class="card receiver-card">
+    <div class="dropzone-icon">
+      <i data-lucide="file-down"></i>
+    </div>
+    <p class="result-kicker">Your file is ready</p>
+    <h1 id="file-name">{{ share.filename }}</h1>
+    <p class="lede" id="file-size">{{ file_size_label }}</p>
+    <p class="hint">Remaining validity: <strong id="remaining">—</strong></p>
+    <p class="status-line" id="status-line">Starting download…</p>
+    <a class="btn btn-primary" id="download-btn" href="{{ share.download_url }}">
+      <i data-lucide="download"></i>
+      Download File
+    </a>
+  </article>
+</main>
+
+<footer class="footer">
+  <p>QuickShare — Temporary file sharing, made simple.</p>
+  <p class="muted">Files are automatically removed after 10 minutes.</p>
+</footer>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.QUICKSHARE_SHARE = {
+    token: {{ share.token|tojson }},
+    expiresAt: {{ share.expires_at|tojson }},
+    downloadUrl: {{ share.download_url|tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/share.js') }}"></script>
+{% endblock %}

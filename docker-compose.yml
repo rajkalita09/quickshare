@@ -1,0 +1,23 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://127.0.0.1:8000}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-deployment}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-26214400}
+      EXPIRY_SECONDS: ${EXPIRY_SECONDS:-600}
+      DATA_DIR: /app/data
+      UPLOAD_DIR: /app/uploads
+      CLEANUP_INTERVAL_SECONDS: ${CLEANUP_INTERVAL_SECONDS:-30}
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
