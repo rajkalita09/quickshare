@@ -42,6 +42,10 @@ def create_app() -> Flask:
         limit=app.config["UPLOAD_RATE_LIMIT"],
         window_seconds=app.config["UPLOAD_RATE_WINDOW_SECONDS"],
     )
+    app.config["CODE_LOOKUP_RATE_LIMITER"] = RateLimiter(
+    limit=10,
+    window_seconds=600,
+)
 
     app.register_blueprint(bp)
 

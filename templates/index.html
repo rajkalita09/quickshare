@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 {% block title %}QuickShare — Share Anything. Anywhere. In Seconds.{% endblock %}
 {% block body %}
@@ -21,7 +22,7 @@
     <p class="eyebrow">Fast. Simple. Temporary.</p>
     <h1>Your Files. One Scan Away.</h1>
     <p class="lede">
-      Upload any file, generate a secure QR code, and share it instantly.
+      Upload any file, generate a secure QR,URL or CODE and share it instantly.
       No account. No hassle. Your link expires in 10 minutes.
     </p>
   </section>
@@ -92,7 +93,7 @@
           </div>
           <div class="result-details">
             <p class="result-kicker">Ready to share</p>
-            <h2>Scan or copy this link</h2>
+            <h2>Scan or copy the Link/Code</h2>
             <div class="file-chip compact">
               <span class="file-type-icon" id="result-icon"><i data-lucide="file"></i></span>
               <div>
@@ -100,26 +101,45 @@
                 <p class="file-meta" id="result-size"></p>
               </div>
             </div>
-            <label class="field-label" for="share-url">Sharing URL</label>
-            <div class="url-row">
-              <input id="share-url" type="text" readonly>
-              <button type="button" id="copy-link" class="btn btn-primary">
-                <i data-lucide="copy"></i>
-                <span id="copy-label">Copy Link</span>
-              </button>
-            </div>
-            <div class="countdown">
-              <div class="countdown-ring">
-                <svg viewBox="0 0 100 100" aria-hidden="true">
-                  <circle class="ring-bg" cx="50" cy="50" r="42"></circle>
-                  <circle id="ring-fg" class="ring-fg" cx="50" cy="50" r="42"></circle>
-                </svg>
-                <div class="countdown-time">
-                  <i data-lucide="timer"></i>
-                  <strong id="countdown">10:00</strong>
+
+            <div class="share-fields">
+              <div class="share-field">
+                <label class="field-label" for="share-url">Sharing URL</label>
+                <div class="url-row">
+                  <input id="share-url" type="text" readonly>
+                  <button type="button" id="copy-link" class="btn btn-primary">
+                    <i data-lucide="copy"></i>
+                    <span id="copy-label">Copy Link</span>
+                  </button>
                 </div>
               </div>
-              <p class="hint">This link expires in 10 minutes. The server blocks access at expiry even if this timer is closed.</p>
+
+              <div class="share-field transfer-field">
+                <label class="field-label" for="transfer-code">Transfer Code</label>
+                <div class="url-row">
+                  <input id="transfer-code" type="text" readonly aria-label="Transfer code">
+                  <button type="button" id="copy-code" class="btn btn-primary">
+                    <i data-lucide="copy"></i>
+                    <span id="copy-code-label">Copy Code</span>
+                  </button>
+                </div>
+                <p class="hint transfer-hint">
+                  Share these six codes with the receiver to download the file. It expires with your file.
+                </p>
+              </div>
+            </div>
+
+            <div class="countdown">
+              <div class="countdown-icon" aria-hidden="true">
+                <i data-lucide="clock-3"></i>
+              </div>
+              <div class="countdown-details">
+                <strong id="countdown">10:00</strong>
+                <span class="countdown-label">TIME REMAINING</span>
+              </div>
+              <p class="hint">
+                Your file expires automatically after 10 minutes.
+              </p>
             </div>
           </div>
         </div>
@@ -138,6 +158,53 @@
     </article>
   </section>
 
+  <section class="stage receive-stage">
+    <article class="card upload-card">
+      <div class="dropzone-icon">
+        <i data-lucide="key-round"></i>
+      </div>
+      <p class="eyebrow">Already have a code?</p>
+      <h2>Receive Files</h2>
+      <p class="lede">Enter the six-character transfer code shared with you.</p>
+
+      <form id="receive-form">
+        <label class="field-label" for="receive-code">Transfer Code</label>
+        <div class="url-row">
+          <input
+            id="receive-code"
+            type="text"
+            maxlength="6"
+            minlength="6"
+            pattern="[A-Za-z0-9]{6}"
+            autocomplete="off"
+            autocapitalize="characters"
+            placeholder="e.g. 2Y48RJ"
+            required
+          >
+          <button type="submit" id="receive-btn" class="btn btn-primary">
+            Find File
+          </button>
+        </div>
+      </form>
+
+      <p id="receive-error" class="alert alert-error hidden" role="alert"></p>
+
+      <div id="receive-result" class="file-chip hidden">
+        <span class="file-type-icon"><i data-lucide="file"></i></span>
+        <div>
+          <p class="file-name" id="receive-filename"></p>
+          <p class="file-meta" id="receive-size"></p>
+          <p class="file-meta" id="receive-expiry"></p>
+        </div>
+      </div>
+
+      <button type="button" id="receive-download" class="btn btn-accent full hidden">
+        <i data-lucide="download"></i>
+        Download File
+      </button>
+    </article>
+  </section>
+
   <section class="steps">
     <article>
       <span>01</span>
@@ -147,21 +214,22 @@
     <article>
       <span>02</span>
       <h3>Share</h3>
-      <p>Copy the unique URL or let someone scan the QR code.</p>
+      <p>Let someone scan the QR code or Copy the unique URL/Six-digit Code.</p>
     </article>
     <article>
       <span>03</span>
       <h3>Expire</h3>
-      <p>After 10 minutes the link is blocked and the file is deleted.</p>
+      <p>After 10 minutes the link is blocked and the file is permanently deleted from our servers.</p>
     </article>
   </section>
 </main>
 
 <footer class="footer">
   <p>QuickShare — Temporary file sharing, made simple.</p>
-  <p class="muted">Files are automatically removed after 10 minutes.</p>
+  <p class="muted">© 2026 QuickShare. All rights reserved.</p>
 </footer>
 {% endblock %}
+
 {% block scripts %}
 <script>
   window.QUICKSHARE = {
