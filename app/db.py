@@ -51,8 +51,16 @@ def init_db(connection: sqlite3.Connection) -> None:
         row["name"]
         for row in connection.execute("PRAGMA table_info(shares)").fetchall()
     }
+   
     if "transfer_code" not in columns:
-        connection.execute("ALTER TABLE shares ADD COLUMN transfer_code TEXT")
+        try:
+            connection.execute(
+                "ALTER TABLE shares ADD COLUMN transfer_code TEXT"
+            )
+        except sqlite3.OperationalError as exc:
+            # Another worker may have added the column concurrently.
+            if "duplicate column name" not in str(exc).lower():
+                raise
 
     # Codes must be unique when present; multiple NULL values are allowed.
     connection.execute(
