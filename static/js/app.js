@@ -1,3 +1,4 @@
+
 (() => {
   const cfg = window.QUICKSHARE || { maxUploadBytes: 26214400, expirySeconds: 600 };
   const form = document.getElementById("upload-form");
@@ -32,21 +33,20 @@
   const resultExpired = document.getElementById("result-expired");
 
   const transferCodeInput = document.getElementById("transfer-code");
-const copyCode = document.getElementById("copy-code");
-const copyCodeLabel = document.getElementById("copy-code-label");
+  const copyCode = document.getElementById("copy-code");
+  const copyCodeLabel = document.getElementById("copy-code-label");
 
-const receiveForm = document.getElementById("receive-form");
-const receiveCodeInput = document.getElementById("receive-code");
-const receiveBtn = document.getElementById("receive-btn");
-const receiveError = document.getElementById("receive-error");
-const receiveResult = document.getElementById("receive-result");
-const receiveFilename = document.getElementById("receive-filename");
-const receiveSize = document.getElementById("receive-size");
-const receiveExpiry = document.getElementById("receive-expiry");
-const receiveDownload = document.getElementById("receive-download");
+  const receiveForm = document.getElementById("receive-form");
+  const receiveCodeInput = document.getElementById("receive-code");
+  const receiveBtn = document.getElementById("receive-btn");
+  const receiveError = document.getElementById("receive-error");
+  const receiveResult = document.getElementById("receive-result");
+  const receiveFilename = document.getElementById("receive-filename");
+  const receiveSize = document.getElementById("receive-size");
+  const receiveExpiry = document.getElementById("receive-expiry");
+  const receiveDownload = document.getElementById("receive-download");
 
-let receivedShare = null;
-
+  let receivedShare = null;
 
   let selected = null;
   let uploading = false;
@@ -60,13 +60,19 @@ let receivedShare = null;
     const units = ["B", "KB", "MB", "GB"];
     let size = bytes;
     let unit = 0;
+
     while (size >= 1024 && unit < units.length - 1) {
       size /= 1024;
       unit += 1;
     }
+
     if (unit === 0) return `${bytes} B`;
+
     const rounded = Math.round(size * 10) / 10;
-    const label = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    const label = Number.isInteger(rounded)
+      ? String(rounded)
+      : rounded.toFixed(1);
+
     return `${label} ${units[unit]}`;
   }
 
@@ -87,6 +93,7 @@ let receivedShare = null;
 
   function setSelected(file) {
     clearError();
+
     if (!file) {
       selected = null;
       fileInput.value = "";
@@ -95,14 +102,19 @@ let receivedShare = null;
       uploadCard.dataset.state = "idle";
       return;
     }
+
     if (file.size <= 0) {
       showError("Empty files are not allowed.");
       return;
     }
+
     if (file.size > cfg.maxUploadBytes) {
-      showError(`File is too large. Maximum size is ${formatSize(cfg.maxUploadBytes)}.`);
+      showError(
+        `File is too large. Maximum size is ${formatSize(cfg.maxUploadBytes)}.`
+      );
       return;
     }
+
     selected = file;
     selectedName.textContent = file.name;
     selectedSize.textContent = formatSize(file.size);
@@ -117,19 +129,23 @@ let receivedShare = null;
   }
 
   dropzone.addEventListener("click", openPicker);
+
   chooseBtn.addEventListener("click", (event) => {
     event.stopPropagation();
     openPicker();
   });
+
   dropzone.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       openPicker();
     }
   });
+
   fileInput.addEventListener("change", () => {
     if (fileInput.files[0]) setSelected(fileInput.files[0]);
   });
+
   removeFile.addEventListener("click", () => setSelected(null));
 
   ["dragenter", "dragover"].forEach((type) => {
@@ -138,45 +154,57 @@ let receivedShare = null;
       uploadCard.dataset.state = "drag";
     });
   });
+
   ["dragleave", "drop"].forEach((type) => {
     dropzone.addEventListener(type, (event) => {
       event.preventDefault();
+
       if (type === "drop") {
         const file = event.dataTransfer.files[0];
         if (file) setSelected(file);
       }
-      uploadCard.dataset.state = selected ? "idle" : "idle";
+
+      uploadCard.dataset.state = "idle";
     });
   });
 
   function setProgress(percent, known) {
     const value = known ? Math.max(0, Math.min(99, percent)) : percent;
+
     progressBar.style.width = `${value}%`;
     progressPercent.textContent = known ? `${value}%` : "Uploading…";
-    progressPanel.querySelector(".progress-track").setAttribute("aria-valuenow", String(value));
+
+    progressPanel
+      .querySelector(".progress-track")
+      .setAttribute("aria-valuenow", String(value));
   }
 
   function uploadFile(file) {
     if (uploading) return;
+
     uploading = true;
     uploadBtn.disabled = true;
     chooseBtn.disabled = true;
     fileInput.disabled = true;
+
     clearError();
     progressPanel.classList.remove("hidden");
     progressFilename.textContent = file.name;
     progressStatus.textContent = "Uploading…";
     uploadCard.dataset.state = "uploading";
+
     setProgress(0, true);
 
     const xhr = new XMLHttpRequest();
     const body = new FormData();
+
     body.append("file", file);
 
     xhr.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) {
         const percent = Math.round((event.loaded / event.total) * 100);
-        // Never paint a fake 100% before the server confirms success.
+
+        // Never show 100% before the server confirms success.
         setProgress(percent === 100 ? 99 : percent, true);
       } else {
         progressStatus.textContent = "Uploading…";
@@ -187,12 +215,15 @@ let receivedShare = null;
       uploading = false;
       chooseBtn.disabled = false;
       fileInput.disabled = false;
+
       let payload = {};
+
       try {
         payload = JSON.parse(xhr.responseText || "{}");
       } catch (_err) {
         payload = {};
       }
+
       if (xhr.status >= 200 && xhr.status < 300) {
         progressStatus.textContent = "Upload complete";
         progressBar.style.width = "100%";
@@ -209,6 +240,7 @@ let receivedShare = null;
       uploadBtn.disabled = false;
       chooseBtn.disabled = false;
       fileInput.disabled = false;
+
       showError("Network error. Check your connection and try again.");
     });
 
@@ -218,10 +250,12 @@ let receivedShare = null;
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+
     if (!selected) {
       showError("Please choose a file to upload.");
       return;
     }
+
     uploadFile(selected);
   });
 
@@ -233,54 +267,73 @@ let receivedShare = null;
     const total = Math.max(0, Math.ceil(ms / 1000));
     const minutes = String(Math.floor(total / 60)).padStart(2, "0");
     const seconds = String(total % 60).padStart(2, "0");
+
     return `${minutes}:${seconds}`;
   }
 
   function tickCountdown() {
     if (!currentShare) return;
+
     const ms = remainingMs(currentShare.expires_at);
+
     countdownEl.textContent = formatCountdown(ms);
+
     const total = (currentShare.expiry_seconds || cfg.expirySeconds) * 1000;
+
     // const offset = circumference - Math.max(0, Math.min(1, ms / total)) * circumference;
     // ringFg.style.strokeDasharray = String(circumference);
     // ringFg.style.strokeDashoffset = String(offset);
+
     if (ms <= 0) {
       clearInterval(countdownTimer);
+
       resultActive.classList.add("hidden");
       resultExpired.classList.remove("hidden");
+
       shareUrl.value = "";
       qrImage.removeAttribute("src");
+
       refreshIcons();
     }
   }
 
   function showResult(payload) {
     currentShare = payload;
+
     uploadCard.classList.add("hidden");
     resultCard.classList.remove("hidden");
+
     resultActive.classList.remove("hidden");
     resultExpired.classList.add("hidden");
+
     shareUrl.value = payload.share_url;
     transferCodeInput.value = payload.transfer_code || "";
     qrImage.src = payload.qr_url;
+
     resultName.textContent = payload.filename;
     resultSize.textContent = formatSize(payload.size);
+
     if (countdownTimer) clearInterval(countdownTimer);
+
     tickCountdown();
     countdownTimer = setInterval(tickCountdown, 250);
+
     refreshIcons();
   }
 
   copyLink.addEventListener("click", async () => {
     const value = shareUrl.value;
     if (!value) return;
+
     try {
       await navigator.clipboard.writeText(value);
     } catch (_err) {
       shareUrl.select();
       document.execCommand("copy");
     }
+
     copyLabel.textContent = "Copied";
+
     setTimeout(() => {
       copyLabel.textContent = "Copy Link";
     }, 1500);
@@ -288,52 +341,68 @@ let receivedShare = null;
 
   downloadQr.addEventListener("click", async () => {
     if (!currentShare) return;
+
     const response = await fetch(currentShare.qr_url);
     if (!response.ok) return;
+
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
     link.href = url;
     link.download = "quickshare-qr.png";
+
     document.body.appendChild(link);
     link.click();
     link.remove();
+
     URL.revokeObjectURL(url);
   });
 
   anotherFile.addEventListener("click", () => {
     if (countdownTimer) clearInterval(countdownTimer);
+
     currentShare = null;
+
     setSelected(null);
     progressPanel.classList.add("hidden");
     setProgress(0, true);
+
     resultCard.classList.add("hidden");
     uploadCard.classList.remove("hidden");
+
     uploadBtn.disabled = true;
   });
 
-  
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
       return true;
     } catch (_error) {
       const helper = document.createElement("textarea");
+
       helper.value = text;
       helper.style.position = "fixed";
       helper.style.opacity = "0";
+
       document.body.appendChild(helper);
       helper.select();
+
       const copied = document.execCommand("copy");
+
       helper.remove();
+
       return copied;
     }
   }
 
   copyCode.addEventListener("click", async () => {
     if (!transferCodeInput.value) return;
+
     const copied = await copyText(transferCodeInput.value);
+
     copyCodeLabel.textContent = copied ? "Copied" : "Copy failed";
+
     setTimeout(() => {
       copyCodeLabel.textContent = "Copy Code";
     }, 1500);
@@ -350,9 +419,11 @@ let receivedShare = null;
     event.preventDefault();
 
     receivedShare = null;
+
     receiveResult.classList.add("hidden");
     receiveDownload.classList.add("hidden");
     receiveError.classList.add("hidden");
+
     receiveBtn.disabled = true;
     receiveBtn.textContent = "Checking...";
 
@@ -369,22 +440,27 @@ let receivedShare = null;
         throw new Error(data.error || "This code is invalid or has expired.");
       }
 
+      // Keep the download URL returned by the server.
       receivedShare = {
         code: receiveCodeInput.value.trim(),
         expiresAt: data.expires_at,
+        download_url: data.download_url,
       };
 
       receiveFilename.textContent = data.filename;
       receiveSize.textContent = formatSize(data.size);
+
       receiveExpiry.textContent =
         `Expires at ${new Date(data.expires_at).toLocaleTimeString()}`;
 
       receiveResult.classList.remove("hidden");
       receiveDownload.classList.remove("hidden");
+
       refreshIcons();
     } catch (error) {
       receiveError.textContent =
         error.message || "Unable to find this file. Please try again.";
+
       receiveError.classList.remove("hidden");
     } finally {
       receiveBtn.disabled = false;
@@ -392,47 +468,24 @@ let receivedShare = null;
     }
   });
 
-  receiveDownload.addEventListener("click", async () => {
-    if (!receivedShare) return;
-
-    receiveDownload.disabled = true;
-    receiveDownload.textContent = "Preparing download...";
-
-    try {
-      const response = await fetch("/api/receive-code/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: receivedShare.code }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "This code is invalid or has expired.");
-      }
-
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") || "";
-      const match = disposition.match(/filename="?([^";]+)"?/i);
-      const filename = match ? match[1] : "download";
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) {
+  // Start a native browser download so Chrome can show its normal progress.
+  receiveDownload.addEventListener("click", () => {
+    if (!receivedShare || !receivedShare.download_url) {
       receiveError.textContent =
-        error.message || "Download failed. Please try again.";
-      receiveError.classList.remove("hidden");
-    } finally {
-      receiveDownload.disabled = false;
-      receiveDownload.innerHTML =
-        '<i data-lucide="download"></i> Download File';
-      refreshIcons();
-    }
-  });
+        "Please find the file again using its transfer code.";
 
+      receiveError.classList.remove("hidden");
+      return;
+    }
+
+    receiveError.classList.add("hidden");
+
+    const link = document.createElement("a");
+    link.href = receivedShare.download_url;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  });
 })();
