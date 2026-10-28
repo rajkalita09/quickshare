@@ -1,5 +1,8 @@
 """HTTP routes for upload, share, download, and QR."""
 
+
+
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -16,12 +19,41 @@ from flask import (
 )
 from werkzeug.exceptions import RequestEntityTooLarge
 
+
+import secrets
+import string
+
 from app.cleanup import cleanup_expired
-from app.db import from_iso, get_share, insert_share, utc_now
+from app.db import (
+    from_iso,
+    get_share,
+    get_share_by_code,
+    insert_share,
+    utc_now,
+)
 from app.qrcode_util import make_qr_png
 from app.storage import delete_file, sanitize_download_name, save_upload, stored_path
 
 bp = Blueprint("main", __name__)
+
+CODE_ALPHABET = string.ascii_uppercase + string.digits
+CODE_LENGTH = 6
+
+
+def _new_transfer_code() -> str:
+    connection = current_app.config["DB"]
+
+    # Retry in the extremely unlikely event of a collision.
+    for _ in range(20):
+        code = "".join(
+            secrets.choice(CODE_ALPHABET)
+            for _ in range(CODE_LENGTH)
+        )
+        existing = get_share_by_code(connection, code)
+        if existing is None:
+            return code
+
+    raise RuntimeError("Could not generate a unique transfer code.")
 
 
 def _public_share_url(token: str) -> str:
@@ -40,6 +72,7 @@ def _public_share_payload(row) -> dict:
         "size": row["file_size"],
         "created_at": row["created_at"],
         "expires_at": row["expires_at"],
+        "transfer_code": row["transfer_code"],
         "share_url": _public_share_url(token),
         "download_url": f"/download/{token}",
         "qr_url": f"/qr/{token}",
@@ -123,6 +156,7 @@ def api_upload():
         created_at = utc_now()
         expires_at = created_at + timedelta(seconds=current_app.config["EXPIRY_SECONDS"])
         token = current_app.config["TOKEN_FACTORY"]()
+        transfer_code = _new_transfer_code()
         insert_share(
             current_app.config["DB"],
             token=token,
@@ -131,7 +165,9 @@ def api_upload():
             file_size=stored_size,
             created_at=created_at,
             expires_at=expires_at,
+            transfer_code=transfer_code
         )
+        
         row = get_share(current_app.config["DB"], token)
         return jsonify(_public_share_payload(row)), 201
     except Exception:
@@ -164,6 +200,98 @@ def api_share(token: str):
     if not path.is_file():
         return jsonify({"error": "This file is no longer available."}), 410
     return jsonify(_public_share_payload(row))
+
+
+@bp.post("/api/receive-code")
+def api_receive_code():
+    limiter = current_app.config["CODE_LOOKUP_RATE_LIMITER"]
+
+    client_ip = request.headers.get(
+        "X-Forwarded-For",
+        request.remote_addr or "unknown",
+    ).split(",")[0].strip()
+
+    if not limiter.allow(f"code-lookup:{client_ip}"):
+        return jsonify({
+            "error": "Too many attempts. Please wait and try again."
+        }), 429
+
+    body = request.get_json(silent=True) or {}
+    code = body.get("code", "")
+
+    if not isinstance(code, str):
+        code = ""
+
+    code = code.strip().upper()
+
+    if (
+        len(code) != CODE_LENGTH
+        or any(character not in CODE_ALPHABET for character in code)
+    ):
+        return jsonify({
+            "error": "This code is invalid or has expired."
+        }), 404
+
+    row = get_share_by_code(current_app.config["DB"], code)
+
+    if row is None or _share_is_expired(row):
+        return jsonify({
+            "error": "This code is invalid or has expired."
+        }), 404
+
+    path = stored_path(current_app.config["UPLOAD_DIR"], row["stored_name"])
+
+    if not path.is_file():
+        return jsonify({
+            "error": "This code is invalid or has expired."
+        }), 404
+
+    return jsonify({
+        "filename": row["original_name"],
+        "size": row["file_size"],
+        "expires_at": row["expires_at"],
+        "download_url": f"/download/{row['token']}",
+    })
+
+
+@bp.post("/api/receive-code/download")
+def api_receive_code_download():
+    body = request.get_json(silent=True) or {}
+    code = body.get("code", "")
+
+    if not isinstance(code, str):
+        code = ""
+
+    code = code.strip().upper()
+
+    if (
+        len(code) != CODE_LENGTH
+        or any(character not in CODE_ALPHABET for character in code)
+    ):
+        return jsonify({
+            "error": "This code is invalid or has expired."
+        }), 404
+
+    row = get_share_by_code(current_app.config["DB"], code)
+
+    if row is None or _share_is_expired(row):
+        return jsonify({
+            "error": "This code is invalid or has expired."
+        }), 404
+
+    path = stored_path(current_app.config["UPLOAD_DIR"], row["stored_name"])
+
+    if not path.is_file():
+        return jsonify({
+            "error": "This code is invalid or has expired."
+        }), 404
+
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=row["original_name"],
+        max_age=0,
+    )
 
 
 @bp.get("/download/<token>")

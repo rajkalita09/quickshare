@@ -27,15 +27,32 @@
   const downloadQr = document.getElementById("download-qr");
   const anotherFile = document.getElementById("another-file");
   const countdownEl = document.getElementById("countdown");
-  const ringFg = document.getElementById("ring-fg");
+  // const ringFg = document.getElementById("ring-fg");
   const resultActive = document.getElementById("result-active");
   const resultExpired = document.getElementById("result-expired");
+
+  const transferCodeInput = document.getElementById("transfer-code");
+const copyCode = document.getElementById("copy-code");
+const copyCodeLabel = document.getElementById("copy-code-label");
+
+const receiveForm = document.getElementById("receive-form");
+const receiveCodeInput = document.getElementById("receive-code");
+const receiveBtn = document.getElementById("receive-btn");
+const receiveError = document.getElementById("receive-error");
+const receiveResult = document.getElementById("receive-result");
+const receiveFilename = document.getElementById("receive-filename");
+const receiveSize = document.getElementById("receive-size");
+const receiveExpiry = document.getElementById("receive-expiry");
+const receiveDownload = document.getElementById("receive-download");
+
+let receivedShare = null;
+
 
   let selected = null;
   let uploading = false;
   let countdownTimer = null;
   let currentShare = null;
-  const circumference = 2 * Math.PI * 42;
+  // const circumference = 2 * Math.PI * 42;
 
   maxSizeLabel.textContent = formatSize(cfg.maxUploadBytes);
 
@@ -224,9 +241,9 @@
     const ms = remainingMs(currentShare.expires_at);
     countdownEl.textContent = formatCountdown(ms);
     const total = (currentShare.expiry_seconds || cfg.expirySeconds) * 1000;
-    const offset = circumference - Math.max(0, Math.min(1, ms / total)) * circumference;
-    ringFg.style.strokeDasharray = String(circumference);
-    ringFg.style.strokeDashoffset = String(offset);
+    // const offset = circumference - Math.max(0, Math.min(1, ms / total)) * circumference;
+    // ringFg.style.strokeDasharray = String(circumference);
+    // ringFg.style.strokeDashoffset = String(offset);
     if (ms <= 0) {
       clearInterval(countdownTimer);
       resultActive.classList.add("hidden");
@@ -244,6 +261,7 @@
     resultActive.classList.remove("hidden");
     resultExpired.classList.add("hidden");
     shareUrl.value = payload.share_url;
+    transferCodeInput.value = payload.transfer_code || "";
     qrImage.src = payload.qr_url;
     resultName.textContent = payload.filename;
     resultSize.textContent = formatSize(payload.size);
@@ -293,4 +311,128 @@
     uploadCard.classList.remove("hidden");
     uploadBtn.disabled = true;
   });
+
+  
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_error) {
+      const helper = document.createElement("textarea");
+      helper.value = text;
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.appendChild(helper);
+      helper.select();
+      const copied = document.execCommand("copy");
+      helper.remove();
+      return copied;
+    }
+  }
+
+  copyCode.addEventListener("click", async () => {
+    if (!transferCodeInput.value) return;
+    const copied = await copyText(transferCodeInput.value);
+    copyCodeLabel.textContent = copied ? "Copied" : "Copy failed";
+    setTimeout(() => {
+      copyCodeLabel.textContent = "Copy Code";
+    }, 1500);
+  });
+
+  receiveCodeInput.addEventListener("input", () => {
+    receiveCodeInput.value = receiveCodeInput.value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 6);
+  });
+
+  receiveForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    receivedShare = null;
+    receiveResult.classList.add("hidden");
+    receiveDownload.classList.add("hidden");
+    receiveError.classList.add("hidden");
+    receiveBtn.disabled = true;
+    receiveBtn.textContent = "Checking...";
+
+    try {
+      const response = await fetch("/api/receive-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: receiveCodeInput.value.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "This code is invalid or has expired.");
+      }
+
+      receivedShare = {
+        code: receiveCodeInput.value.trim(),
+        expiresAt: data.expires_at,
+      };
+
+      receiveFilename.textContent = data.filename;
+      receiveSize.textContent = formatSize(data.size);
+      receiveExpiry.textContent =
+        `Expires at ${new Date(data.expires_at).toLocaleTimeString()}`;
+
+      receiveResult.classList.remove("hidden");
+      receiveDownload.classList.remove("hidden");
+      refreshIcons();
+    } catch (error) {
+      receiveError.textContent =
+        error.message || "Unable to find this file. Please try again.";
+      receiveError.classList.remove("hidden");
+    } finally {
+      receiveBtn.disabled = false;
+      receiveBtn.textContent = "Find File";
+    }
+  });
+
+  receiveDownload.addEventListener("click", async () => {
+    if (!receivedShare) return;
+
+    receiveDownload.disabled = true;
+    receiveDownload.textContent = "Preparing download...";
+
+    try {
+      const response = await fetch("/api/receive-code/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: receivedShare.code }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "This code is invalid or has expired.");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename = match ? match[1] : "download";
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      receiveError.textContent =
+        error.message || "Download failed. Please try again.";
+      receiveError.classList.remove("hidden");
+    } finally {
+      receiveDownload.disabled = false;
+      receiveDownload.innerHTML =
+        '<i data-lucide="download"></i> Download File';
+      refreshIcons();
+    }
+  });
+
 })();

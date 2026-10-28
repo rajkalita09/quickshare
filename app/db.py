@@ -1,3 +1,4 @@
+
 """SQLite helpers for share metadata."""
 
 from __future__ import annotations
@@ -14,7 +15,8 @@ CREATE TABLE IF NOT EXISTS shares (
     original_name TEXT NOT NULL,
     file_size INTEGER NOT NULL,
     created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL
+    expires_at TEXT NOT NULL,
+    transfer_code TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_shares_expires_at ON shares(expires_at);
 """
@@ -43,6 +45,23 @@ def connect(database_path: Path) -> sqlite3.Connection:
 
 def init_db(connection: sqlite3.Connection) -> None:
     connection.executescript(SCHEMA)
+
+    # Backward-compatible migration for databases created before transfer codes.
+    columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(shares)").fetchall()
+    }
+    if "transfer_code" not in columns:
+        connection.execute("ALTER TABLE shares ADD COLUMN transfer_code TEXT")
+
+    # Codes must be unique when present; multiple NULL values are allowed.
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_shares_transfer_code
+        ON shares(transfer_code)
+        WHERE transfer_code IS NOT NULL
+        """
+    )
     connection.commit()
 
 
@@ -55,19 +74,44 @@ def insert_share(
     file_size: int,
     created_at: datetime,
     expires_at: datetime,
+    transfer_code: str | None = None,
 ) -> None:
     connection.execute(
         """
-        INSERT INTO shares (token, stored_name, original_name, file_size, created_at, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO shares (
+            token, stored_name, original_name, file_size,
+            created_at, expires_at, transfer_code
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (token, stored_name, original_name, file_size, to_iso(created_at), to_iso(expires_at)),
+        (
+            token,
+            stored_name,
+            original_name,
+            file_size,
+            to_iso(created_at),
+            to_iso(expires_at),
+            transfer_code,
+        ),
     )
     connection.commit()
 
 
 def get_share(connection: sqlite3.Connection, token: str) -> sqlite3.Row | None:
     cursor = connection.execute("SELECT * FROM shares WHERE token = ?", (token,))
+    return cursor.fetchone()
+
+
+def get_share_by_code(
+    connection: sqlite3.Connection, transfer_code: str
+) -> sqlite3.Row | None:
+    cursor = connection.execute(
+        """
+        SELECT * FROM shares
+        WHERE transfer_code = ? COLLATE NOCASE
+        """,
+        (transfer_code,),
+    )
     return cursor.fetchone()
 
 
